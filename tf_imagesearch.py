@@ -1,6 +1,6 @@
 """Tìm ảnh trên web theo từ khoá chính của tin (nhóm B). Kết quả CHƯA được dùng — mọi ảnh phải qua tf_verify.
 
-- Mặc định: Bing Images (không cần key; đọc trang kết quả — không chính thức, có thể hỏng nếu Bing đổi giao diện).
+- Không còn đọc trang kết quả Bing (scraping) từ 3.6.
 - Tuỳ chọn: SerpAPI (kết quả Google Hình ảnh; cần key serpapi.com). Google Custom Search API đã đóng với người dùng mới.
 """
 from __future__ import annotations
@@ -61,4 +61,5 @@ def search(query: str, settings: dict, n: int = 20) -> tuple[str, list[dict]]:
     key = (settings.get('serpapi_key') or os.getenv('SERPAPI_KEY') or '').strip()
     if key:
         return 'Google Images (SerpAPI)', serpapi_images(query, key, n)
-    return 'Bing Images', bing_images(query, n)
+    # From 3.6 TrendFlow no longer scrapes Bing result pages (fragile, against its terms; the Bing Search API was retired).
+    return 'không có (cần SerpAPI key)', []

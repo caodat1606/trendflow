@@ -606,9 +606,15 @@ def download(c: dict, min_side: int | None = None) -> dict:
     if c['url'].startswith('fixture://'):
         raw = (Path(FIXTURE_DIR) / c['url'][len('fixture://'):]).read_bytes()
     else:
-        pub = c.get('rights_class') == 'publisher'
+        pub = c.get('rights_class') in ('publisher', 'web')
         _, raw, _ = safe_get(c['url'], max_bytes=20_000_000, browser=pub, accept='image/*',
                              referer=c.get('page_url') if pub else None)
+    return store_image(c, raw, min_side)
+
+
+def store_image(c: dict, raw: bytes, min_side: int | None = None) -> dict:
+    """Validate image bytes, save a normalised JPEG into MEDIA_DIR and record provenance in media_cache."""
+    MEDIA_DIR.mkdir(exist_ok=True)
     try:
         im = Image.open(io.BytesIO(raw))
         im.verify()

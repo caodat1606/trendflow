@@ -50,7 +50,7 @@ def main(workdir: Path):
     import tf_db
     from tf_db import connect, now_iso
     client = TestClient(appmod.app)
-    tf_db.set_settings({'image_source': 'search', 'tts_provider': 'espeak', 'final_quality': os.getenv('E2E_FINAL_QUALITY', '1080p')})
+    tf_db.set_settings({'visual_mode': 'auto', 'image_source': 'search', 'tts_provider': 'espeak', 'final_quality': os.getenv('E2E_FINAL_QUALITY', '1080p')})
     with connect() as db:
         db.execute("INSERT INTO sources(id,category,name,url,language,market) VALUES(900,'Công nghệ','Fixture','fixture://src','vi','VN')")
         db.execute('''INSERT INTO trends(id,source_id,category,title,summary,link,published,first_seen)

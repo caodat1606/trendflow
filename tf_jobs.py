@@ -17,6 +17,7 @@ import tf_media
 import tf_qa
 import tf_render
 import tf_script
+import tf_studio
 import tf_tts
 from tf_db import ROOT, connect, get_settings, now_iso
 from tf_text import narration_hash, scene_segments, sha, word_count
@@ -51,7 +52,7 @@ class JobFailed(RuntimeError):
 def enqueue(tid: int, kind: str, origin='user', params: dict | None = None) -> int:
     with connect() as db:
         active = db.execute("""SELECT id FROM automation_jobs WHERE trend_id=? AND status IN ('queued','running','cancel_requested')
-                               AND kind IN ('generate','preview','final')""", (tid,)).fetchone()
+                               AND kind IN ('generate','preview','final','voice')""", (tid,)).fetchone()
         if active:
             raise JobFailed('Dự án này đang có tác vụ chạy. Đợi xong hoặc huỷ trước.')
         cur = db.execute('''INSERT INTO automation_jobs(trend_id,status,step,created_at,updated_at,origin,kind,progress,result_json)
@@ -89,7 +90,7 @@ def cancel_trend(tid: int):
 
 def active_job(tid: int):
     with connect() as db:
-        r = db.execute("""SELECT * FROM automation_jobs WHERE trend_id=? AND kind IN ('generate','preview','final')
+        r = db.execute("""SELECT * FROM automation_jobs WHERE trend_id=? AND kind IN ('generate','preview','final','voice')
                           ORDER BY id DESC LIMIT 1""", (tid,)).fetchone()
     return job_dict(r) if r else None
 
@@ -114,7 +115,7 @@ def ensure_worker():
 
 def _next_job():
     with connect() as db:
-        row = db.execute("""SELECT * FROM automation_jobs WHERE status='queued' AND kind IN ('generate','preview')
+        row = db.execute("""SELECT * FROM automation_jobs WHERE status='queued' AND kind IN ('generate','preview','voice')
                             ORDER BY id LIMIT 1""").fetchone()
         if row:
             return row
@@ -165,7 +166,7 @@ def _run(job):
 
     ctx = Ctx(tid, report, checkpoint)
     try:
-        result = {'generate': run_generate, 'preview': run_preview, 'final': run_final}[kind](ctx, params)
+        result = {'generate': run_generate, 'preview': run_preview, 'final': run_final, 'voice': run_voice}[kind](ctx, params)
         with connect() as db:
             db.execute("""UPDATE automation_jobs SET status='done', step=?, progress=1, result_json=?, error=NULL,
                           updated_at=?, finished_at=? WHERE id=? AND status='running'""",
@@ -366,6 +367,30 @@ def current_voice(ctx, tid, project, settings):
     return synth_voice(ctx, tid, project['narration'], settings, p_range=(0.03, 0.11))
 
 
+def plan_source(settings) -> str:
+    """'manual' (Visual Studio picks) or the automatic source ('article' / 'search')."""
+    return 'manual' if settings.get('visual_mode', 'manual') == 'manual' else settings['image_source']
+
+
+def studio_state(tid, project, settings, count=None, force=False):
+    """Current Visual Studio selection + sentence timeline (real voice timings when the voice is current)."""
+    vt = voice_track(tid)
+    fresh, _ = voice_is_current(vt, project, settings)
+    tl, approx = tf_studio.timeline(project['narration'], vt if fresh else None, calibrated_wps())
+    sel = tf_studio.ensure(tid, project['narration'], [t['end'] - t['start'] for t in tl], count=count, force=force)
+    return sel, tl, approx
+
+
+def plan_is_current(sp, vt, project, settings) -> bool:
+    if not (sp and vt and project):
+        return False
+    ok = (sp['narration_hash'] == narration_hash(project['narration']) and sp['voice_filename'] == vt['filename']
+          and sp['plan'].get('headline') == project['hook'] and sp['plan'].get('image_source', 'search') == plan_source(settings))
+    if ok and plan_source(settings) == 'manual':
+        ok = sp['plan'].get('selection_hash') == tf_studio.selection_hash(tf_studio.load(project['trend_id']))
+    return ok
+
+
 # ------------------------------------------------------------------ pipelines
 
 def run_generate(ctx, params):
@@ -403,6 +428,17 @@ def run_generate(ctx, params):
             'attempts': attempts, 'duration': vt['duration'], 'length_ok': ok, 'provider': vt['provider']}
 
 
+def run_voice(ctx, params):
+    """Create the narration voice only (Visual Studio uses its real timings to time the segments)."""
+    tid = ctx.tid
+    project = project_row(tid)
+    if not project or word_count(project['narration']) < 10:
+        raise JobFailed('Kịch bản chưa có lời thoại.')
+    ctx.report('Chuẩn bị giọng đọc…', 0.02)
+    vt = current_voice(ctx, tid, project, get_settings())
+    return {'message': f"Giọng đọc {vt['duration']:.1f}s — đã có mốc thời gian thật cho từng đoạn", 'duration': vt['duration']}
+
+
 def run_preview(ctx, params):
     tid = ctx.tid
     if stage_of(tid) != 'draft':
@@ -424,12 +460,32 @@ def run_preview(ctx, params):
         db.execute('INSERT OR REPLACE INTO script_checks(trend_id,narration_hash,report_json,created_at) VALUES(?,?,?,?)',
                    (tid, nh, json.dumps(check, ensure_ascii=False), now_iso()))
     sp = scene_plan(tid)
-    reuse = (sp and not params.get('refresh_media') and sp['narration_hash'] == nh and sp['voice_filename'] == vt['filename']
+    if plan_source(settings) == 'manual':
+        ctx.report('Dựng kế hoạch hình từ ảnh m đã chọn…', 0.3)
+        sel, _, _ = studio_state(tid, project, settings)
+        try:
+            plan = tf_studio.build_plan(sel, vt['timings'], project['hook'])
+        except tf_studio.StudioError as exc:
+            raise JobFailed(str(exc))
+        report = tf_studio.evaluate(plan, vt['duration'])
+        ph = tf_media.plan_hash(plan, nh, vt['filename'])
+        with connect() as db:
+            db.execute('''INSERT OR REPLACE INTO scene_plans(trend_id,plan_json,plan_hash,narration_hash,voice_filename,passed,report_json,created_at)
+                          VALUES(?,?,?,?,?,?,?,?)''', (tid, json.dumps(plan, ensure_ascii=False), ph, nh, vt['filename'],
+                                                      int(report['passed']), json.dumps(report, ensure_ascii=False), now_iso()))
+        sp = scene_plan(tid)
+        if not report['passed']:
+            err = JobFailed('Chưa dựng được: ' + ' '.join(report['issues']))
+            err.payload = {'plan_report': report}
+            raise err
+    reuse = plan_source(settings) != 'manual' and (sp and not params.get('refresh_media') and sp['narration_hash'] == nh and sp['voice_filename'] == vt['filename']
              and sp['passed'] and sp['plan'].get('headline') == project['hook']
              and sp['plan'].get('image_source', 'search') == settings['image_source']
              and (settings['image_source'] == 'article' or sp['plan'].get('policy') == settings['rights_policy'])
              and all((tf_media.MEDIA_DIR / m['local_filename']).is_file() for m in sp['plan']['media'].values()))
-    if reuse:
+    if plan_source(settings) == 'manual':
+        pass
+    elif reuse:
         plan, report = sp['plan'], sp['report']
         ctx.report('Dùng lại kế hoạch ảnh đã kiểm tra cho lời thoại này.', 0.3)
     else:
@@ -464,7 +520,7 @@ def run_preview(ctx, params):
     qa['manifest'] = manifest
     _store_render(tid, 'preview', out, sp['plan_hash'], manifest, qa, sheet)
     dur_ok = 45 <= vt['duration'] <= 60
-    return {'message': f"Video xem thử {manifest['duration']:.1f}s · {report['distinct_photos']} ảnh thật · QA "
+    return {'message': f"Video xem thử {manifest['duration']:.1f}s · {report['distinct_photos']} ảnh · QA "
                        + ('đạt' if qa['passed'] else 'CHƯA ĐẠT') + ('' if dur_ok else ' · thời lượng ngoài 45–60s'),
             'qa_passed': qa['passed'], 'duration_ok': dur_ok, 'plan_report': report}
 
@@ -523,8 +579,22 @@ def _store_render(tid, kind, out, plan_hash, manifest, qa, sheet):
 
 
 def credits_text(trend, project, plan):
-    lines = [project['title'], '', 'NGUỒN TIN: ' + (trend.get('link') or ''), '',
-             'ẢNH (tự động chọn, có giấy phép/nguồn kèm theo):']
+    lines = [project['title'], '', 'NGUỒN TIN: ' + (trend.get('link') or ''), '']
+    if plan.get('image_source') == 'manual':
+        lines.append('ẢNH (chọn tay trong Studio):')
+        seen = []
+        for s in plan['segments']:
+            for sh in s['shots']:
+                m = plan['media'][str(sh['media_id'])]
+                where = m.get('page_url') or ('' if str(m.get('url', '')).startswith('upload://') else m.get('url', ''))
+                line = f"- Đoạn {s['index'] + 1}: {m.get('credit') or 'chưa ghi credit'}" + (f' — {where}' if where else '')
+                if line not in seen:
+                    seen.append(line)
+        lines += seen
+        lines += ['', 'Lưu ý: ảnh của tòa soạn/ảnh web thuộc bản quyền chủ sở hữu — ghi credit khi đăng.',
+                  '', 'CAPTION:', project.get('caption') or '', project.get('hashtags') or '']
+        return '\n'.join(lines)
+    lines.append('ẢNH (tự động chọn, có giấy phép/nguồn kèm theo):')
     for s in plan['segments']:
         for sh in s['shots']:
             m = plan['media'][str(sh['media_id'])]

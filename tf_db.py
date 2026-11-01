@@ -17,12 +17,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.getenv('TRENDFLOW_DB') or (Path(os.getenv('TRENDFLOW_DATA_DIR') or ROOT) / 'trendflow.db'))
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 _SETTINGS_LOCK = threading.Lock()
 
 DEFAULT_SETTINGS = {
     # strict: CC0/PD/CC BY · open: + CC BY-SA · editorial: + ảnh của chính bài báo gốc
     # article: ảnh của chính bài gốc + bài báo khác cùng sự kiện (mặc định) · search: ảnh tư liệu Wikimedia/Openverse
+    # manual: the editor picks photos per segment in Visual Studio (default from 3.6) · auto: AI picks (image_source)
+    'visual_mode': 'manual',
+    'pexels_key': '',                # optional: Pexels API key for Visual Studio photo search
     'image_source': 'article',
     'rights_policy': 'open',
     'voice_id': 'vi-VN-NamMinhNeural',
@@ -144,6 +147,8 @@ CREATE TABLE IF NOT EXISTS renders (
     filename TEXT NOT NULL, plan_hash TEXT NOT NULL, duration REAL, width INTEGER, height INTEGER,
     passed INTEGER NOT NULL DEFAULT 0, qa_json TEXT, sheet_filename TEXT, created_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_renders_trend ON renders(trend_id, kind, id);
+CREATE TABLE IF NOT EXISTS visual_selections (
+    trend_id INTEGER PRIMARY KEY, narration_hash TEXT NOT NULL, segments_json TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS script_checks (
     trend_id INTEGER PRIMARY KEY, narration_hash TEXT NOT NULL, report_json TEXT NOT NULL,
     created_at TEXT NOT NULL);

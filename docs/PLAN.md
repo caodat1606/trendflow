@@ -19,7 +19,7 @@
 
 Xem `CHANGELOG.md`.
 
-## Phase 2 — Visual Studio UI
+## Phase 2 + 3 — Visual Studio UI + Render ✅ (3.6.0)
 
 - AI chia lời thoại thành 5–10 đoạn, dựa trên câu và mốc thời gian thật của file voice.
   Có thể gộp hoặc tách đoạn.
@@ -36,7 +36,7 @@ Xem `CHANGELOG.md`.
 - Lưu lựa chọn vào DB (migration chỉ thêm, không sửa/xoá dữ liệu cũ).
   Không bắt buộc Gemini.
 
-## Phase 3 — Render
+## Phase 3 — Render (chi tiết)
 
 - Plan lấy trực tiếp từ lựa chọn trong Studio, chia thời lượng theo voice thật.
 - Preview đoạn đơn lẻ nhanh; render final qua hàng đợi hiện có.

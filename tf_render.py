@@ -69,8 +69,10 @@ def wrap(draw, text, ft, max_w):
 class Shot:
     """Pre-computed layers for one photo. `frame(p)` returns an RGB frame for progress p∈[0,1]."""
 
-    def __init__(self, path: Path, W: int, H: int, seed: int):
+    def __init__(self, path: Path, W: int, H: int, seed: int, focus=None):
         self.W, self.H = W, H
+        # focus = (x, y) in 0..1 chosen by the editor in Visual Studio; keeps that point inside the 9:16 crop.
+        fx, fy = (max(0.0, min(1.0, float(focus[0]))), max(0.0, min(1.0, float(focus[1])))) if focus else (0.5, None)
         img = Image.open(path).convert('RGB')
         self.aspect = img.width / img.height
         self.landscape = self.aspect > 0.95
@@ -81,12 +83,12 @@ class Shot:
             self.bg = Image.blend(bg, Image.new('RGB', bg.size, (8, 10, 14)), 0.45)
             self.box = (W, int(W * 1.2))
             self.box_y = int(H * 0.16)
-            self.src = _cover(img, int(self.box[0] * 1.14), int(self.box[1] * 1.14), (0.5, 0.42))
+            self.src = _cover(img, int(self.box[0] * 1.14), int(self.box[1] * 1.14), (fx, 0.42 if fy is None else fy))
         else:
             self.bg = None
             self.box = (W, H)
             self.box_y = 0
-            self.src = _cover(img, int(W * 1.14), int(H * 1.14), (0.5, 0.38))
+            self.src = _cover(img, int(W * 1.14), int(H * 1.14), (fx, 0.38 if fy is None else fy))
         sw, sh = self.src.size
         bw, bh = self.box
         self.mask = None
@@ -305,7 +307,7 @@ def render(plan, timings, project, audio: Path, out: Path, *, quality='720p', pr
             path = MEDIA_DIR / m['local_filename']
             if not path.is_file():
                 raise RenderError(f'Thiếu file ảnh {m["local_filename"]} — chạy lại Test.')
-            cache[k] = Shot(path, W, H, k + shots[k]['media_id'])
+            cache[k] = Shot(path, W, H, k + shots[k]['media_id'], shots[k].get('focus'))
             for old in [x for x in cache if x < k - 1]:
                 cache.pop(old)
         return cache[k]
@@ -376,7 +378,8 @@ def render(plan, timings, project, audio: Path, out: Path, *, quality='720p', pr
         if proc.stderr:
             proc.stderr.close()
     manifest = {'width': W, 'height': H, 'fps': FPS, 'duration': duration,
-                'shots': [{'start': s['start'], 'end': s['end'], 'media_id': s['media_id'], 'segs': s['segs']} for s in shots],
+                'shots': [{'start': s['start'], 'end': s['end'], 'media_id': s['media_id'], 'segs': s['segs'],
+                           'focus': s.get('focus')} for s in shots],
                 'captions': [{'start': c['start'], 'end': c['end'], 'text': ' '.join(w['text'] for w in c['words'])} for c in groups],
                 'headline_until': head_end, 'render_seconds': round(time.monotonic() - started, 1)}
     return manifest
@@ -394,6 +397,6 @@ def reference_frame(plan, shots_manifest, t, W, H):
     k = max(i for i, s in enumerate(shots) if s['start'] <= t + 1e-6)
     sh = shots[k]
     m = plan['media'][str(sh['media_id'])]
-    shot = Shot(MEDIA_DIR / m['local_filename'], W, H, k + sh['media_id'])
+    shot = Shot(MEDIA_DIR / m['local_filename'], W, H, k + sh['media_id'], sh.get('focus'))
     span = max(0.5, sh['end'] - sh['start'] + XFADE)
     return shot.frame((t - sh['start']) / span)

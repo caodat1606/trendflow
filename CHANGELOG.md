@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.6.0 — Visual Studio: chọn ảnh thủ công theo đoạn
+
+- **Mặc định chuyển sang chế độ "Tự chọn (Studio)"** trong trang biên tập kịch bản:
+  - Lời thoại tự chia thành 5–10 đoạn, dùng mốc thời gian thật của giọng Nam Minh (nút "🎙 Tạo giọng") hoặc ước tính nếu chưa có giọng.
+  - Gộp, tách, chia lại N đoạn; giữ ảnh đã chọn khi có thể.
+  - Từ khoá gợi ý theo tên riêng trong câu; nút "✦ Gợi ý từ khoá" dùng Ollama nếu có, không bắt buộc.
+  - Mỗi đoạn chọn 1–3 ảnh: đổi thứ tự, bấm vào ảnh để đặt điểm focus giữ chủ thể trong khung 9:16, sửa credit.
+- **Nguồn ảnh không scrape:**
+  - Ảnh bài gốc và báo cùng sự kiện.
+  - Openverse, Wikimedia Commons (API).
+  - Pexels (key miễn phí).
+  - Google Images qua SerpAPI (key).
+  - Tải ảnh từ máy, dán link ảnh.
+- **Render dùng đúng ảnh đã chọn**, cắt ảnh tại mốc thời gian từ trong đoạn. QA kiểm tra từng đoạn hiện đúng ảnh.
+  - Đổi ảnh sau khi xem thử thì video xem thử cũ bị ẩn và phải xem thử lại mới duyệt được.
+- Gemini/AI nhìn ảnh **không còn bắt buộc**; chế độ "Tự động (AI)" cũ vẫn chọn được trong trang biên tập hoặc Cài đặt.
+- Bỏ đọc trang kết quả Bing Images (scraping) ở chế độ tự động; chỉ dùng SerpAPI nếu có key.
+- Database: thêm bảng `visual_selections` (chỉ thêm; tự sao lưu trước khi nâng cấp).
+- Cài đặt: chế độ chọn ảnh, Pexels API key.
+
 ## 3.5.0 — Phase 1: Developer Experience
 
 - Repo Git chuẩn: `.gitignore` chặn `.env`, DB, media, venv, cache.
