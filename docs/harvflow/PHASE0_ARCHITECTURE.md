@@ -2,6 +2,7 @@
 
 > Brand: **HarvFlow** · Product: **HarvFlow Clips** · AI Video Repurposing Studio · *Create more. Edit less.*
 > Ngày audit: 2026-11-01 · Nguồn audit: `caodat1606/trendflow`, nhánh `main` @ `283d432` (TrendFlow 3.6.0)
+> Bổ sung: YouTube URL Import — thiết kế chi tiết ở [`YOUTUBE_IMPORT.md`](YOUTUBE_IMPORT.md).
 > Trạng thái: **ĐỀ XUẤT — chờ duyệt.** Chưa sửa hay đổi tên bất kỳ dòng code nào của TrendFlow.
 
 ---
@@ -187,14 +188,18 @@ Code TrendFlow, dữ liệu `~/TrendFlowData` và lệnh `trendflow` **không b�
     podcast-tap-12--7f3a/                    (slug + id ngắn, đổi tên dự án không đổi thư mục)
       project.json                           ← MANIFEST (xem 4.3)
       project.lease.json                     ← máy nào đang mở để sửa (khoá mềm)
-      source/original.mp4                    (hoặc tham chiếu tương đối nếu anh không muốn copy)
+      (video nguồn KHÔNG nằm ở đây — xem sources/ bên dưới)
       analysis/transcript.json               (Whisper: segments + words, kèm hash nguồn + model)
       analysis/faces.json                    (đường đi khuôn mặt theo thời gian — dùng lại trên máy kia)
       clips/candidates.json                  (AI đề xuất, giữ lịch sử từng lần chạy)
       subtitles/<clipId>.vi.json | .en.json  (phụ đề đã sửa)
       exports/<clipId>__vi__20261101-1530.mp4  + .report.json (kết quả QA)
       .history/project.r0042.json            (bản sao manifest cũ, giữ 20 bản gần nhất)
+  sources/                                   ← video nguồn dùng chung, mỗi video lưu 1 lần (định danh sha256)
+    sha256-9f2c…/original.mp4 + source.json
+    index.json                               (YouTube video ID → asset, để phát hiện video đã nhập)
 ```
+Video nguồn chỉ được giữ trên Drive khi anh chọn **"Giữ trên Drive"**. Nếu chọn **"Chỉ giữ metadata + thành phẩm"** thì video chỉ nằm trong cache local; máy khác cần nhập lại khi muốn render lại (xem `YOUTUBE_IMPORT.md` §4).
 
 Ở local (không đồng bộ):
 - Windows: `%LOCALAPPDATA%\HarvFlow\`
@@ -218,8 +223,10 @@ Gồm:
   "schemaVersion": 1, "projectId": "7f3a…", "revision": 42,
   "updatedAt": "2026-11-01T15:30:12Z", "updatedBy": {"deviceId": "win-…", "deviceName": "HARVEY-PC"},
   "title": "Podcast tập 12",
-  "source": {"path": "source/original.mp4", "sha256Head": "…", "size": 2147483648,
-             "probe": {"duration": 2712.4, "w": 1920, "h": 1080, "fps": 29.97, "rotation": 0, "vcodec": "h264", "acodec": "aac"}},
+  "source": {"kind": "local|youtube", "youtube": {"videoId": "…", "canonicalUrl": "…", "…": "…"},
+             "rights": {"basis": "own_channel|licensed|…", "verified": false},
+             "media": {"retention": "workspace|metadata_only", "assetId": "sha256:…", "workspacePath": "sources/sha256-…/original.mp4",
+                       "probe": {"duration": 2712.4, "w": 1920, "h": 1080, "fps": 29.97, "rotation": 0, "vcodec": "h264", "acodec": "aac"}}},
   "transcript": {"path": "analysis/transcript.json", "language": "vi", "model": "large-v3-turbo", "sourceHash": "…", "edited": true},
   "clips": [{"id": "c1", "status": "accepted", "start": 312.40, "end": 371.85, "title": "…",
              "crop": {"mode": "auto", "manualKeyframes": []}, "subtitle": {"mode": "bilingual", "style": "bold-yellow"}}],
@@ -286,6 +293,7 @@ Cả hai cờ trên là hành vi của Windows/macOS, **sẽ được kiểm ch�
 
 | Module | Công nghệ đề xuất | Windows (RTX 4070) | macOS (M3 Pro) | Dự phòng |
 |---|---|---|---|---|
+| B. Nhập video từ link YouTube | oEmbed + YouTube Data API (metadata), OAuth `captions.download` (phụ đề kênh mình), theo dõi Downloads nhận bản tải chính thức từ YouTube Studio — **không tải trực tiếp từ YouTube** | — | — | "Chọn file gốc" — chi tiết: `YOUTUBE_IMPORT.md` |
 | B. Nhập video | `ffprobe` JSON: thời lượng, codec, độ phân giải, fps, xoay (`side_data`/`rotate`), có audio | — | — | Từ chối file không đọc được, file 0 byte, file chỉ trên cloud |
 | C. Chép lời | **faster-whisper** (CTranslate2) trên Windows; **mlx-whisper** (Apple MLX, chạy GPU Apple) trên Mac; cùng giao diện `Transcriber` | CUDA float16, `large-v3-turbo` mặc định, `large-v3` khi cần chính xác | MLX `large-v3-turbo` | CPU int8 (`faster-whisper`, model `small`/`medium`) |
 | C. Tiền xử lý audio | FFmpeg tách mono 16 kHz, `loudnorm`; VAD (Silero, có sẵn trong faster-whisper) để bỏ đoạn im lặng dài, giảm "bịa chữ" | | | |
@@ -367,8 +375,9 @@ harvflow-clips/
 
 | Phase | Nội dung | Nghiệm thu (bằng chứng cụ thể) |
 |---|---|---|
-| **1. Nền tảng** | Repo mới; brand cấu hình được; UI giữ phong cách; `harvflow` + setup Win/Mac + `doctor`; worker tách tiến trình; Storage + manifest + lease + revision + `.history`; Thư viện dự án (tạo/mở/đổi tên/nhân bản/lưu trữ/tìm/sắp xếp) | Test tự động: ghi nguyên tử, xung đột revision, phục hồi file hỏng, lease. **Anh thử thật:** tạo dự án trên Mac → Drive đồng bộ → mở trên Windows thấy đúng; sửa trên cả 2 máy cùng lúc → bị chặn/báo xung đột |
-| **2. Nhập & chép lời** | ffprobe, từ chối file lỗi hoặc chỉ-trên-cloud; Whisper 2 backend; cache; sửa transcript | Video thật 10 phút: chép lời xong, mở lại không chạy lại; chép lời trên Mac → Windows dùng lại; đo tốc độ + lỗi tiếng Việt ghi vào báo cáo |
+| **1A. Nền tảng** | Repo mới; brand cấu hình được; `harvflow` + setup Win/Mac + `doctor`; worker tách tiến trình; Storage + manifest (gồm trường `source.kind / rights / media.retention / assetId` cho YouTube) + lease + revision + `.history`; thư mục `sources/` dùng chung; **khai báo** interface `SourceResolver` / `MediaProvider` (chưa gọi mạng) | Test tự động: ghi nguyên tử, xung đột revision, phục hồi file hỏng, lease, migration schema. `harvflow doctor` chạy được trên 2 máy |
+| **1B. Thư viện dự án** | UI giữ phong cách TrendFlow, brand HarvFlow; tạo/mở/đổi tên/nhân bản/lưu trữ/tìm/sắp xếp; trạng thái dự án; checklist chuyển máy | **Anh thử thật:** tạo dự án trên Mac → Drive đồng bộ → mở trên Windows thấy đúng; mở cùng lúc trên 2 máy → máy sau chỉ xem được; sửa lệch revision → báo xung đột |
+| **2. Nhập & chép lời** | Import Studio 2 tab: **Dán link YouTube** (phân tích URL, metadata/thumbnail, xác nhận quyền, phụ đề chính thức nếu là kênh mình, theo dõi bản tải từ YouTube Studio, phát hiện video đã nhập, giữ trên Drive hoặc chỉ metadata) và **Tải video từ máy**; ffprobe, từ chối file lỗi / chỉ-trên-cloud / tải dở; Whisper 2 backend; cache; sửa transcript | Toàn bộ test ở `YOUTUBE_IMPORT.md` §6; video thật 10 phút: chép lời xong, mở lại không chạy lại; chép lời trên Mac → Windows dùng lại; đo tốc độ + lỗi tiếng Việt ghi vào báo cáo |
 | **3. Chọn clip** | 5–10 ứng viên 30–90 giây đủ trường; loại trùng; xem thử, nhận/bỏ, chỉnh biên | Trên 2–3 video thật: anh chấm tỉ lệ clip dùng được; không có 2 clip cùng ý |
 | **4. Phụ đề** | Việt / Anh / song ngữ; sửa, style, preview; thời gian đúng khi đổi biên clip | Sửa phụ đề trên máy A → máy B thấy đúng; preview khớp bản xuất |
 | **5. Cắt khung & xuất** | Crop theo mặt, chỉnh tay, render NVENC/VideoToolbox/x264, xuất hàng loạt, huỷ, thử lại, kiểm tra đầu ra, file tạm local rồi mới đưa lên Drive | MP4 1080×1920 H.264/AAC, âm thanh gốc, phụ đề đúng, khung ổn định; file dở không bao giờ xuất hiện trong `exports/` |
@@ -382,11 +391,12 @@ Mỗi phase kết thúc bằng: PR + báo cáo theo đúng mẫu mục 12 của 
 ## 7. Cần anh quyết định trước khi bắt đầu Phase 1
 
 1. **Repo riêng `harvflow-clips`** (khuyến nghị) hay nhánh trong repo `trendflow`?
-2. **Video nguồn:** chép vào thư mục dự án trên Drive (đơn giản, 2 máy chắc chắn có; tốn dung lượng — anh có 5 TB) hay chỉ tham chiếu file sẵn có trên Drive?
-   Khuyến nghị: **chép vào dự án**.
+2. **Video nguồn mặc định:** "Giữ trên Drive" (2 máy đều render được, tốn dung lượng — anh có 5 TB) hay "Chỉ giữ metadata + thành phẩm"? Đổi được cho từng dự án.
+   Khuyến nghị: **Giữ trên Drive**, lưu 1 lần trong `sources/` dùng chung.
 3. **Dịch và chọn clip:** chỉ AI trên máy (Ollama — miễn phí, chậm hơn, dịch kém tự nhiên hơn) hay cho phép **Gemini** khi có key (nhanh và tốt hơn, có thể tốn phí khi vượt mức miễn phí)?
    Khuyến nghị: Ollama mặc định, Gemini tuỳ chọn.
 4. Đồng ý **bỏ hẳn** tính năng tin tức và giọng đọc máy khỏi HarvFlow (vẫn giữ trong TrendFlow)?
+5. **YouTube Import:** đồng ý giới hạn ở `YOUTUBE_IMPORT.md` §1 — app **không tự tải video từ YouTube**; video kênh của anh lấy qua bản tải chính thức từ YouTube Studio, video kênh khác cần file gốc?
 
 ## 8. Giới hạn của bản audit này
 
