@@ -31,6 +31,7 @@ import tf_jobs
 import tf_llm
 import tf_media
 import tf_news
+import tf_studio
 import tf_tts
 from tf_db import connect, get_settings, now_iso, set_settings
 from tf_text import narration_hash, scene_segments, word_count
@@ -129,15 +130,24 @@ def gates(tid) -> dict:
     add('facts', fresh_check and chk['ok'],
         ('Số liệu khớp bài nguồn' if chk['ok'] else 'Số liệu không có trong nguồn: ' + ', '.join(chk['unsupported_numbers']))
         if fresh_check else 'Chưa kiểm tra dữ kiện')
-    fresh_plan = bool(fresh_voice and sp and vt and sp['narration_hash'] == nh and sp['voice_filename'] == vt['filename']
-                      and p and sp['plan'].get('headline') == p['hook']
-                      and sp['plan'].get('image_source', 'search') == get_settings()['image_source'])
-    add('photos', fresh_plan and sp['passed'],
-        ((f"{sp['report']['distinct_photos']} ảnh đã được AI xác nhận (bài gốc: {sp['report'].get('verified_a', 0)}, web: "
-          f"{sp['report'].get('verified_b', 0)}) · {sp['report']['sentence_matched']}/{sp['report']['segments']} câu có ảnh đúng chủ thể")
-         if sp['plan'].get('image_source') == 'article' else
-         f"{sp['report']['distinct_photos']} ảnh thật, {sp['report']['sentence_matched']}/{sp['report']['segments']} câu có ảnh riêng"
-         if sp['passed'] else 'Ảnh thật chưa đạt: ' + ' '.join(sp['report']['issues'])) if fresh_plan else 'Chưa chọn ảnh cho lời thoại hiện tại')
+    settings = get_settings()
+    fresh_plan = bool(fresh_voice and tf_jobs.plan_is_current(sp, vt, p, settings))
+    manual = tf_jobs.plan_source(settings) == 'manual'
+    if not fresh_plan:
+        photo_msg = ('Ảnh đã chọn thay đổi hoặc chưa tạo video xem thử từ ảnh đã chọn' if manual
+                     else 'Chưa chọn ảnh cho lời thoại hiện tại')
+    elif not sp['passed']:
+        photo_msg = 'Ảnh chưa đạt: ' + ' '.join(sp['report']['issues'])
+    elif manual:
+        photo_msg = (f"{sp['report']['distinct_photos']} ảnh tự chọn · "
+                     f"{sp['report']['sentence_matched']}/{sp['report']['segments']} đoạn có ảnh")
+    elif sp['plan'].get('image_source') == 'article':
+        photo_msg = (f"{sp['report']['distinct_photos']} ảnh đã được AI xác nhận (bài gốc: {sp['report'].get('verified_a', 0)}, web: "
+                     f"{sp['report'].get('verified_b', 0)}) · {sp['report']['sentence_matched']}/{sp['report']['segments']} câu có ảnh đúng chủ thể")
+    else:
+        photo_msg = (f"{sp['report']['distinct_photos']} ảnh thật, "
+                     f"{sp['report']['sentence_matched']}/{sp['report']['segments']} câu có ảnh riêng")
+    add('photos', fresh_plan and sp['passed'], photo_msg)
     fresh_render = bool(pr and fresh_plan and pr['plan_hash'] == sp['plan_hash'])
     add('preview', fresh_render and pr['passed'], ('Video xem thử đã qua QA' if pr['passed'] else 'QA video xem thử chưa đạt')
         if fresh_render else 'Chưa có video xem thử cho nội dung hiện tại')
@@ -164,7 +174,7 @@ def project_payload(tid):
     nh = narration_hash(p['narration'])
     segs = scene_segments(p['narration'])
     sentences = [{'index': i, 'text': s} for i, s in enumerate(segs)]
-    if sp and sp['narration_hash'] == nh:
+    if sp and sp['narration_hash'] == nh and sp['plan'].get('image_source') != 'manual':
         for seg in sp['plan']['segments']:
             if seg['index'] < len(sentences):
                 sentences[seg['index']].update({'start': seg['start'], 'end': seg['end'], 'entities': seg['entities'],
@@ -183,7 +193,7 @@ def project_payload(tid):
                     'fallback_reason': vt['timings'].get('fallback_reason'),
                     'url': f'/api/projects/{tid}/audio' if voice_ok else None} if vt else None
     out['plan'] = {'report': sp['report'], 'passed': bool(sp['passed']), 'fresh': sp['narration_hash'] == nh} if sp else None
-    plan_current = bool(voice_ok and sp and sp['voice_filename'] == vt['filename'] and sp['narration_hash'] == nh)
+    plan_current = bool(voice_ok and tf_jobs.plan_is_current(sp, vt, p, settings))
     out['preview_stale'] = None
     if pr and (out['stage'] in (None, 'draft')) and not (plan_current and pr['plan_hash'] == sp['plan_hash']):
         out['preview_stale'] = {'reason': voice_why or 'Nội dung/ảnh đã đổi sau video xem thử này', 'created_at': pr['created_at']}
@@ -198,6 +208,13 @@ def project_payload(tid):
     out['verifiers'] = tf_verify.available(settings)
     out['verifier_default'] = settings.get('image_verifier', 'auto')
     out['legacy_video'] = _legacy_video(tid)
+    out['visual_mode'] = tf_jobs.plan_source(settings) == 'manual' and 'manual' or 'auto'
+    out['studio'] = None
+    if out['visual_mode'] == 'manual':
+        sel, tl, approx = tf_jobs.studio_state(tid, p, settings)
+        out['studio'] = tf_studio.payload(sel, tl, approx)
+        out['studio']['sources'] = tf_studio.sources(settings)
+        out['studio']['voice_ready'] = not approx
     return out
 
 
@@ -350,6 +367,7 @@ def delete_project(tid: int):
     with connect() as db:
         for table in ('workflow_items', 'script_projects', 'voice_tracks', 'scene_plans', 'renders', 'script_checks'):
             db.execute(f'DELETE FROM {table} WHERE trend_id=?', (tid,))
+    tf_studio.delete(tid)
     return {'ok': True, 'source_article_preserved': True}
 
 
@@ -412,6 +430,148 @@ def media_image(media_id: int):
     if not r or not r['local_filename']:
         raise HTTPException(404, 'Không có ảnh')
     return _file(tf_media.MEDIA_DIR / Path(r['local_filename']).name, 'image/jpeg')
+
+
+# ------------------------------------------------------------------ Visual Studio (manual photo selection)
+
+class StudioSegBody(BaseModel):
+    keywords: str | None = None
+    picks: list[dict] | None = None
+
+
+class StudioAddBody(BaseModel):
+    candidate: dict
+    credit: str = ''
+
+
+class StudioUploadBody(BaseModel):
+    data_url: str
+    filename: str = ''
+    credit: str = ''
+
+
+class StudioResegBody(BaseModel):
+    count: int | None = None
+
+
+def _studio(tid):
+    p = _require_project(tid)
+    _require_draft(tid)
+    settings = get_settings()
+    sel, tl, approx = tf_jobs.studio_state(tid, p, settings)
+    return p, settings, sel, [t['text'] for t in tl]
+
+
+def _studio_out(tid):
+    p = tf_jobs.project_row(tid)
+    settings = get_settings()
+    sel, tl, approx = tf_jobs.studio_state(tid, p, settings)
+    out = tf_studio.payload(sel, tl, approx)
+    out['sources'] = tf_studio.sources(settings)
+    out['voice_ready'] = not approx
+    return out
+
+
+def _studio_call(fn):
+    try:
+        return fn()
+    except tf_studio.StudioError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.get('/api/projects/{tid}/studio')
+def studio_get(tid: int):
+    _require_project(tid)
+    return _studio_out(tid)
+
+
+@app.post('/api/projects/{tid}/studio/resegment')
+def studio_resegment(tid: int, body: StudioResegBody):
+    p, settings, sel, sents = _studio(tid)
+    if body.count is not None and not 1 <= body.count <= tf_studio.MAX_SEGMENTS:
+        raise HTTPException(400, f'Số đoạn từ 1 đến {tf_studio.MAX_SEGMENTS}')
+    tf_jobs.studio_state(tid, p, settings, count=body.count, force=True)
+    return _studio_out(tid)
+
+
+@app.put('/api/projects/{tid}/studio/segments/{seg_id}')
+def studio_segment(tid: int, seg_id: str, body: StudioSegBody):
+    p, settings, sel, sents = _studio(tid)
+    _studio_call(lambda: tf_studio.update_segment(tid, sel, sents, seg_id, body.keywords, body.picks))
+    return _studio_out(tid)
+
+
+@app.post('/api/projects/{tid}/studio/segments/{seg_id}/merge')
+def studio_merge(tid: int, seg_id: str):
+    p, settings, sel, sents = _studio(tid)
+    _studio_call(lambda: tf_studio.merge(tid, sel, sents, seg_id))
+    return _studio_out(tid)
+
+
+@app.post('/api/projects/{tid}/studio/segments/{seg_id}/split')
+def studio_split(tid: int, seg_id: str):
+    p, settings, sel, sents = _studio(tid)
+    _studio_call(lambda: tf_studio.split(tid, sel, sents, seg_id))
+    return _studio_out(tid)
+
+
+@app.post('/api/projects/{tid}/studio/segments/{seg_id}/add')
+def studio_add(tid: int, seg_id: str, body: StudioAddBody):
+    p, settings, sel, sents = _studio(tid)
+    row = _studio_call(lambda: tf_studio.fetch_candidate(body.candidate))
+    _studio_call(lambda: tf_studio.add_pick(tid, sel, sents, seg_id, row, body.credit))
+    return _studio_out(tid)
+
+
+@app.post('/api/projects/{tid}/studio/segments/{seg_id}/upload')
+def studio_upload(tid: int, seg_id: str, body: StudioUploadBody):
+    p, settings, sel, sents = _studio(tid)
+    row = _studio_call(lambda: tf_studio.store_upload(body.data_url, body.filename, body.credit))
+    _studio_call(lambda: tf_studio.add_pick(tid, sel, sents, seg_id, row, body.credit))
+    return _studio_out(tid)
+
+
+@app.post('/api/projects/{tid}/studio/suggest')
+def studio_suggest(tid: int):
+    p, settings, sel, sents = _studio(tid)
+    trend = tf_jobs.trend_row(tid)
+    kws = tf_studio.suggest_keywords([s.get('text', '') for s in sel['segments']], trend.get('title_vi') or trend['title'])
+    for seg, kw in zip(sel['segments'], kws):
+        seg['keywords'] = kw
+    tf_studio.save(tid, sel['narration_hash'], sel['segments'])
+    return _studio_out(tid)
+
+
+@app.post('/api/projects/{tid}/studio/voice')
+def studio_voice(tid: int):
+    _require_project(tid)
+    _require_draft(tid)
+    return _enqueue(tid, 'voice')
+
+
+@app.get('/api/projects/{tid}/studio/search')
+def studio_search(tid: int, source: str = 'article', q: str = ''):
+    _require_project(tid)
+    items = _studio_call(lambda: tf_studio.search(tid, source, q, get_settings()))
+    out = []
+    for c in items[:40]:
+        if not c.get('url'):
+            continue
+        thumb = c.get('thumb_src') or c['url']
+        out.append({**{k: c.get(k) for k in ('url', 'page_url', 'provider', 'title', 'description', 'creator', 'license',
+                                              'license_url', 'rights_class', 'width', 'height', 'primary')},
+                    'thumb': '/api/studio/thumb?' + __import__('urllib.parse').parse.urlencode({'u': thumb, 'r': c.get('page_url') or ''})})
+    return {'items': out, 'source': source}
+
+
+@app.get('/api/studio/thumb')
+def studio_thumb(u: str, r: str = ''):
+    from fastapi.responses import Response
+    try:
+        data = tf_studio.thumbnail(u, r)
+    except Exception:
+        raise HTTPException(404, 'Không tải được ảnh xem trước')
+    return Response(data, media_type='image/jpeg', headers={'Cache-Control': 'max-age=3600'})
 
 
 # ------------------------------------------------------------------ jobs & pending
@@ -487,13 +647,15 @@ def pending_remove(tid: int):
 def overview():
     with connect() as db:
         c = {r['stage']: r['n'] for r in db.execute('SELECT stage, COUNT(*) n FROM workflow_items GROUP BY stage')}
-        running = db.execute("SELECT COUNT(*) FROM automation_jobs WHERE status IN ('queued','running','cancel_requested') AND kind IN ('generate','preview','final')").fetchone()[0]
-    return {'drafts': c.get('draft', 0), 'pending': c.get('pending', 0), 'done': c.get('done', 0), 'jobs': running}
+        running = db.execute("SELECT COUNT(*) FROM automation_jobs WHERE status IN ('queued','running','cancel_requested') AND kind IN ('generate','preview','final','voice')").fetchone()[0]
+    return {'drafts': c.get('draft', 0), 'pending': c.get('pending', 0), 'done': c.get('done', 0), 'jobs': running, 'version': VERSION}
 
 
 # ------------------------------------------------------------------ settings & health
 
 class SettingsBody(BaseModel):
+    visual_mode: str | None = None
+    pexels_key: str | None = None
     image_source: str | None = None
     azure_key: str | None = None
     gemini_key: str | None = None
@@ -512,7 +674,7 @@ class SettingsBody(BaseModel):
 
 def _masked(s):
     s = dict(s)
-    for name in ('azure_key', 'gemini_key', 'serpapi_key'):
+    for name in ('azure_key', 'gemini_key', 'serpapi_key', 'pexels_key'):
         k = s.get(name) or ''
         s[name] = ('••••' + k[-4:]) if k else ''
     return s
@@ -562,7 +724,9 @@ def settings_put(body: SettingsBody):
         raise HTTPException(400, 'Mục tiêu 45–60 giây')
     if 'image_verifier' in v and v['image_verifier'] not in ('auto', 'gemini', 'ollama'):
         raise HTTPException(400, 'AI kiểm tra ảnh không hợp lệ')
-    for name in ('azure_key', 'gemini_key', 'serpapi_key'):
+    if 'visual_mode' in v and v['visual_mode'] not in ('manual', 'auto'):
+        raise HTTPException(400, 'Chế độ ảnh không hợp lệ')
+    for name in ('azure_key', 'gemini_key', 'serpapi_key', 'pexels_key'):
         if (v.get(name) or '').startswith('••••'):
             v.pop(name)   # masked value sent back unchanged
     if 'gemini_voice' in v and v['gemini_voice'] not in tf_tts.GEMINI_VOICES:

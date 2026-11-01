@@ -265,7 +265,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv('TRENDFLOW_DB', str(tmp_path / 't.db'))
     monkeypatch.setenv('AUTO_SCAN', 'false')
     monkeypatch.setenv('OLLAMA_URL', 'http://127.0.0.1:9')
-    for m in ('tf_db', 'tf_news', 'tf_media', 'tf_article', 'tf_imagesearch', 'tf_verify', 'tf_jobs', 'app'):
+    for m in ('tf_db', 'tf_news', 'tf_media', 'tf_article', 'tf_imagesearch', 'tf_verify', 'tf_studio', 'tf_jobs', 'app'):
         sys.modules.pop(m, None)
     import tf_db
     importlib.reload(tf_db)

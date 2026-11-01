@@ -19,7 +19,7 @@ def env(tmp_path, monkeypatch):
     for k, v in {'TRENDFLOW_DB': str(tmp_path / 't.db'), 'TRENDFLOW_FIXTURE_DIR': str(FIX), 'MIN_IMAGE_SIDE': '380', 'WEB_MIN_IMAGE_SIDE': '380',
                  'AUTO_SCAN': 'false', 'OLLAMA_URL': 'http://127.0.0.1:9'}.items():
         monkeypatch.setenv(k, v)
-    for m in ('tf_db', 'tf_news', 'tf_media', 'tf_article', 'tf_imagesearch', 'tf_verify', 'tf_jobs', 'tf_render', 'tf_qa', 'app'):
+    for m in ('tf_db', 'tf_news', 'tf_media', 'tf_article', 'tf_imagesearch', 'tf_verify', 'tf_studio', 'tf_jobs', 'tf_render', 'tf_qa', 'app'):
         sys.modules.pop(m, None)
     import tf_db, tf_jobs, tf_media
     monkeypatch.setattr(tf_jobs, 'VOICE_DIR', tmp_path / 'voice')
@@ -28,7 +28,7 @@ def env(tmp_path, monkeypatch):
     import tf_render
     monkeypatch.setattr(tf_render, 'MEDIA_DIR', tmp_path / 'media')
     tf_db.migrate()
-    tf_db.set_settings({'tts_provider': 'espeak', 'image_source': 'search'})
+    tf_db.set_settings({'tts_provider': 'espeak', 'image_source': 'search', 'visual_mode': 'auto'})
     from tf_db import connect
     article = (FIX / 'article.txt').read_text()
     with connect() as db:
