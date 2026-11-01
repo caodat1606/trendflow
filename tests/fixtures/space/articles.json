@@ -1,0 +1,57 @@
+{
+ "https://vnexpress.net/test-bon-cot-moc-vu-tru": {
+  "title": "Bốn cột mốc khám phá vũ trụ",
+  "images": [
+   {
+    "file": "hubble_deep_field.jpg",
+    "caption": "Ảnh Hubble Deep Field do kính Hubble chụp năm 1995.",
+    "note": "Ảnh đại diện bài báo"
+   },
+   {
+    "file": "astronaut.jpg",
+    "caption": "Phi hành gia Eileen Collins của NASA.",
+    "note": "Ảnh trong bài"
+   },
+   {
+    "file": "moon.jpg",
+    "caption": "Bề mặt Mặt Trăng.",
+    "note": "Ảnh trong bài"
+   },
+   {
+    "file": "coffee.jpg",
+    "caption": "Ảnh minh hoạ",
+    "note": "Ảnh trong bài"
+   }
+  ]
+ },
+ "https://tuoitre.vn/test-cot-moc-vu-tru": {
+  "title": "Bốn cột mốc khám phá vũ trụ của nhân loại",
+  "images": [
+   {
+    "file": "hubble_deep_field.jpg",
+    "caption": "Hubble Deep Field.",
+    "note": "Ảnh đại diện bài báo"
+   },
+   {
+    "file": "rocket.jpg",
+    "caption": "Tên lửa Falcon 9 của SpaceX phóng vệ tinh DSCOVR năm 2015.",
+    "note": "Ảnh trong bài"
+   },
+   {
+    "file": "coffee.jpg",
+    "caption": "Spider-Man và Naruto trong một dự án phim chuyển thể khác.",
+    "note": "Ảnh trong bài"
+   }
+  ]
+ },
+ "https://thanhnien.vn/test-netflix-pubg": {
+  "title": "Netflix làm phim PUBG",
+  "images": [
+   {
+    "file": "chelsea.jpg",
+    "caption": "PUBG Mobile sự kiện quảng bá",
+    "note": "Ảnh trong bài"
+   }
+  ]
+ }
+}

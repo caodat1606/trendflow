@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TrendFlow</title>
+<style>
+:root{--bg:#0b0d12;--panel:#12151c;--panel2:#181c25;--line:#252b37;--muted:#8a94a6;--text:#e9edf3;--accent:#ffd640;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24;--r:12px;
+font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+aside{border-right:1px solid var(--line);padding:22px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:22px}
+.brand{display:block;font-weight:700;font-size:17px;padding:0 10px;letter-spacing:-.3px}.brand i{color:var(--accent);font-style:normal}
+nav{display:grid;gap:2px}nav a{padding:9px 10px;border-radius:8px;color:var(--muted);display:flex;justify-content:space-between}
+nav a.on,nav a:hover{background:var(--panel2);color:var(--text)}nav small{background:var(--line);border-radius:6px;padding:0 6px;font-size:11px}
+.foot{margin-top:auto;color:var(--muted);font-size:12px;padding:0 10px}
+main{padding:28px 34px;max-width:1240px;width:100%}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:-.4px}.sub{color:var(--muted);margin:0 0 20px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 14px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#3a4252}.btn.pri{background:var(--accent);color:#111;border-color:var(--accent);font-weight:600}
+.btn.danger{color:var(--bad)}.btn.sm{padding:5px 10px;font-size:13px}.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.spacer{flex:1}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.list{display:grid;gap:8px}.item{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.item .t{font-weight:600}.meta{color:var(--muted);font-size:12px}.grow{flex:1;min-width:0}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+.badge.ok{color:var(--ok);border-color:#1f4d33}.badge.bad{color:var(--bad);border-color:#5b2626}.badge.warn{color:var(--warn)}
+input.in,select.in,textarea.in{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%}
+textarea.in{resize:vertical;min-height:90px}label{display:block;color:var(--muted);font-size:12px;margin:12px 0 5px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:18px;align-items:start}
+.pct{font-size:22px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}.progress{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin:8px 0}.progress>div{height:100%;background:var(--accent);transition:width .4s}
+.job{border:1px solid #3d3415;background:#1b1810;border-radius:var(--r);padding:12px;margin-bottom:12px}
+.err{border-color:#5b2626;background:#1c1112}.notice{padding:10px 12px;border-radius:9px;background:var(--panel2);margin:10px 0;font-size:13px}
+.gates{display:grid;gap:5px;margin:10px 0}.gate{font-size:13px;display:flex;gap:8px}.gate b{width:16px}
+.sent{display:grid;grid-template-columns:64px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.sent img{width:64px;height:84px;object-fit:cover;border-radius:7px;background:var(--panel2)}
+.sent .none{width:64px;height:84px;border-radius:7px;border:1px dashed var(--bad);display:grid;place-items:center;font-size:10px;color:var(--bad);text-align:center}
+video{width:100%;max-height:560px;border-radius:10px;background:#000}
+.drag{cursor:grab;color:var(--muted);font-size:18px;padding:0 4px}.item.over{border-color:var(--accent)}
+.empty{color:var(--muted);text-align:center;padding:40px;border:1px dashed var(--line);border-radius:var(--r)}
+details summary{cursor:pointer;color:var(--muted);margin-top:12px}
+.opt{display:flex;gap:10px;padding:10px;border:1px solid var(--line);border-radius:9px;margin:6px 0;cursor:pointer}.opt input{margin-top:4px}
+@media(max-width:980px){.app{grid-template-columns:1fr}aside{position:static;height:auto}.grid2{grid-template-columns:1fr}main{padding:18px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <a class="brand" href="/discover" title="Về trang chủ">Trend<i>Flow</i></a>
+  <nav>
+    <a href="/discover" data-nav="discover">Khám phá tin</a>
+    <a href="/scripts" data-nav="scripts">Kịch bản <small id="cDraft">0</small></a>
+    <a href="/pending" data-nav="pending">Pending <small id="cPending">0</small></a>
+    <a href="/completed" data-nav="completed">Thành phẩm <small id="cDone">0</small></a>
+    <a href="/settings" data-nav="settings">Cài đặt</a>
+  </nav>
+  <div class="foot" id="foot">TrendFlow 3.4</div>
+</aside>
+<main id="view"></main>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=x=>{if(!x)return'';const d=new Date(x);return isNaN(d)?String(x).slice(0,16):d.toLocaleString('vi-VN',{dateStyle:'short',timeStyle:'short'})};
+const sec=x=>x==null?'':Number(x).toFixed(1)+'s';
+let timer=null,dirty=false,current=null,pendingItems=[],dragId=null;
+async function api(url,opt={}){const r=await fetch(url,{...opt,headers:opt.body?{'Content-Type':'application/json'}:{}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.detail||('Lỗi '+r.status));return d}
+const post=(u,b)=>api(u,{method:'POST',body:b?JSON.stringify(b):undefined});
+function stop(){if(timer){clearTimeout(timer);timer=null}}
+function poll(fn,ms=2000){stop();timer=setTimeout(async()=>{try{await fn()}catch(e){}},ms)}
+function go(url,replace){if(dirty&&!confirm('Có thay đổi chưa lưu. Rời trang?'))return;dirty=false;replace?history.replaceState({},'',url):history.pushState({},'',url);route()}
+document.addEventListener('click',e=>{const a=e.target.closest('a[href^="/"]');if(!a||a.target||a.hasAttribute('download')||a.getAttribute('href').startsWith('/api/')||e.metaKey||e.ctrlKey)return;e.preventDefault();go(a.getAttribute('href'))});
+window.addEventListener('popstate',()=>{dirty=false;route()});
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+function toast(msg,bad){const n=document.createElement('div');n.className='notice';n.style.cssText='position:fixed;right:20px;bottom:20px;z-index:9;max-width:420px;border:1px solid '+(bad?'#5b2626':'#2a3a2e')+';';n.textContent=msg;document.body.appendChild(n);setTimeout(()=>n.remove(),bad?7000:3500)}
+async function counts(){try{const d=await api('/api/overview');$('cDraft').textContent=d.drafts;$('cPending').textContent=d.pending;$('cDone').textContent=d.done;$('foot').textContent='TrendFlow 3.4'+(d.jobs?` · ${d.jobs} tác vụ đang chạy`:'')}catch{}}
+async function route(){stop();const p=location.pathname;const m=p.match(/^\/scripts\/(\d+)$/);const page=m?'scripts':(p.split('/')[1]||'discover');
+ document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('on',a.dataset.nav===page));counts();
+ $('view').innerHTML='<p class="sub">Đang tải…</p>';
+ try{if(m)await editor(+m[1]);else({discover,scripts,pending,completed,settings}[page]||discover)()}catch(e){$('view').innerHTML=`<h1>Không mở được trang</h1><p class="sub">${esc(e.message)}</p>`}}
+
+// ---------------- Discover
+async function discover(){const q=new URLSearchParams(location.search);const page=+(q.get('page')||0),cat=q.get('category')||'',kw=q.get('q')||'';
+ $('view').innerHTML=`<div class="row"><div><h1>Khám phá tin</h1><p class="sub">Cân bằng tin Việt Nam và quốc tế · 4 ngách</p></div><span class="spacer"></span><button class="btn" id="scan">↻ Quét tin mới</button></div>
+ <div class="row" style="margin-bottom:14px"><input class="in" id="kw" placeholder="Tìm chủ đề, nhân vật…" value="${esc(kw)}" style="max-width:340px"><select class="in" id="cat" style="max-width:170px"><option value="">Tất cả ngách</option>${['Tin thế giới','Công nghệ','Phim ảnh','Bóng đá'].map(c=>`<option ${c===cat?'selected':''}>${c}</option>`).join('')}</select><button class="btn" id="filter">Lọc</button></div>
+ <div class="list" id="feed"><p class="sub">Đang tải tin…</p></div><div class="row" style="margin-top:14px"><span class="meta" id="pg"></span><span class="spacer"></span><a class="btn sm" href="/discover?${new URLSearchParams({q:kw,category:cat,page:Math.max(0,page-1)})}">← Trước</a><a class="btn sm" href="/discover?${new URLSearchParams({q:kw,category:cat,page:page+1})}">Sau →</a></div>`;
+ $('filter').onclick=()=>go('/discover?'+new URLSearchParams({q:$('kw').value,category:$('cat').value,page:0}));
+ $('kw').onkeydown=e=>{if(e.key==='Enter')$('filter').click()};
+ $('scan').onclick=async()=>{$('scan').disabled=true;$('scan').textContent='Đang quét…';await post('/api/scan');setTimeout(()=>route(),8000)};
+ const d=await api('/api/trends?'+new URLSearchParams({scope:'balanced',category:cat,q:kw,limit:15,offset:page*15}));
+ const drafts=new Set((await api('/api/projects?stage=draft')).items.map(x=>x.trend_id));
+ $('feed').innerHTML=d.items.length?d.items.map(x=>`<div class="item"><div class="grow"><div class="meta"><span class="badge">${esc(x.category)}</span> ${esc(x.source_name||'')} · ${x.is_vn_source?'Việt Nam':'Quốc tế'} · ${fmt(x.published)}</div><div class="t">${esc(x.title_vi||x.title)}</div><div class="meta">${esc((x.summary_vi||x.summary||'').slice(0,220))}</div></div>
+  ${drafts.has(x.id)?`<a class="btn sm" href="/scripts/${x.id}">Mở kịch bản</a>`:`<button class="btn sm pri" onclick="createScript(${x.id},this)">Tạo kịch bản</button>`}</div>`).join(''):'<div class="empty">Chưa có tin. Bấm “Quét tin mới”.</div>';
+ $('pg').textContent=`${d.total} tin · trang ${page+1} · VN ${d.market_page.vn} / Quốc tế ${d.market_page.intl}`}
+async function createScript(id,b){b.disabled=true;try{await post(`/api/projects/${id}/generate`,{});go('/scripts/'+id)}catch(e){b.disabled=false;toast(e.message,1)}}
+
+// ---------------- Scripts list
+async function scripts(){const d=await api('/api/projects?stage=draft');
+ $('view').innerHTML=`<h1>Kịch bản</h1><p class="sub">Bản nháp chờ bạn biên tập, xem thử và duyệt.</p><div class="list">${d.items.length?d.items.map(x=>`<div class="item"><div class="grow"><div class="meta"><span class="badge">${esc(x.category)}</span> ${x.words} từ · cập nhật ${fmt(x.updated_at)} ${jobBadge(x.job)}</div><a class="t" href="/scripts/${x.trend_id}">${esc(x.title)}</a></div><a class="btn sm" href="/scripts/${x.trend_id}">Mở</a><button class="btn sm danger" onclick="delProject(${x.trend_id})">Xoá</button></div>`).join(''):'<div class="empty">Chưa có kịch bản. Vào Khám phá tin để bắt đầu.</div>'}</div>`;
+ if(d.items.some(x=>x.job&&['queued','running','cancel_requested'].includes(x.job.status)))poll(scripts,3000)}
+function jobBadge(j){if(!j)return'';const map={queued:['Đang chờ',''],running:['Đang chạy','warn'],cancel_requested:['Đang dừng','warn'],error:['Lỗi','bad'],done:['',''],cancelled:['Đã huỷ','']};const [t,c]=map[j.status]||['',''];return t?`<span class="badge ${c}">${t}${j.kind==='final'?' · sản xuất':j.kind==='preview'?' · xem thử':' · viết'}${j.status==='running'?' · '+Math.round((j.progress||0)*100)+'%':''}</span>`:''}
+async function delProject(id){if(!confirm('Xoá dự án này? Kịch bản, giọng đọc và video của dự án sẽ bị xoá. Bài báo gốc được giữ lại.'))return;try{await api(`/api/projects/${id}`,{method:'DELETE'});toast('Đã xoá dự án.');dirty=false;location.pathname.startsWith('/scripts/')?go('/scripts',true):route()}catch(e){toast(e.message,1)}}
+
+// ---------------- Editor
+const KIND={generate:'Viết kịch bản',preview:'Video xem thử',final:'Sản xuất bản cuối'};
+function jobBox(j){if(!j)return'';const active=['queued','running','cancel_requested'].includes(j.status);
+ if(active){const pc=Math.round((j.progress||0)*100);return`<div class="job"><div class="row"><b>${KIND[j.kind]||''}</b><span class="pct">${j.status==='queued'?'Đang chờ':pc+'%'}</span><span class="spacer"></span><button class="btn sm danger" onclick="cancelJob(${j.id})">■ Dừng</button></div><div class="progress"><div style="width:${pc}%"></div></div><div class="meta">${esc(j.step)}</div></div>`}
+ if(j.status==='error'){const rep=(j.result||{}).plan_report;return`<div class="job err"><b>${KIND[j.kind]||''} không thành công</b><div class="meta" style="margin-top:4px">${esc(j.error||j.step)}</div>${(j.result||{}).tts_attempts?.length?`<details open><summary>Chi tiết từng lần đọc (Edge)</summary><div class="meta">${j.result.tts_attempts.slice(-14).map(a=>`Câu ${a.sentence} · lần ${a.round} · ${esc(a.how)} · ${a.ok?'OK':'LỖI '+esc(a.error||'')} (${a.seconds}s)`).join('<br>')}</div></details>`:''}${rep&&rep.log?`<details><summary>Chi tiết tìm ảnh</summary><div class="meta">${rep.log.map(esc).join('<br>')}${rep.rejected_examples?.length?'<br><b>Ảnh bị loại:</b> '+rep.rejected_examples.map(esc).join(' · '):''}</div></details>`:''}</div>`}
+ return''}
+async function cancelJob(id){try{await post(`/api/jobs/${id}/cancel`);toast('Đã yêu cầu dừng.')}catch(e){toast(e.message,1)}}
+async function editor(id){const d=await api(`/api/projects/${id}`);current=d;const p=d.project,t=d.trend,draft=!d.stage||d.stage==='draft';
+ const active=d.job&&['queued','running','cancel_requested'].includes(d.job.status);
+ if(!p){$('view').innerHTML=`<p class="meta"><a href="/scripts">← Kịch bản</a></p><h1>${esc(t.title_vi||t.title)}</h1><p class="sub">${esc(t.source_name||'')} · <a href="${esc(t.link)}" target="_blank" rel="noopener">mở bài gốc ↗</a></p>${jobBox(d.job)}
+  ${active?'':`<div class="card"><p>AI sẽ đọc bài gốc, viết lời thoại tiếng Việt, đo giọng đọc thật và tự chỉnh để đạt 45–60 giây.</p><button class="btn pri" onclick="regen(${id},false)">✦ AI tạo kịch bản</button></div>`}`;if(active)poll(()=>editor(id));return}
+ const g=d.gates,pv=d.preview,fv=d.final;
+ const sentences=p.sentences.map(s=>{const sh=(s.shots||[])[0];return`<div class="sent">${sh?`<a href="${esc(sh.page_url||sh.thumb)}" target="_blank" rel="noopener" title="${esc(sh.credit||'')}"><img loading="lazy" src="${esc(sh.thumb)}"></a>`:`<div class="none">${s.shots?'thiếu ảnh':'chưa chọn'}</div>`}<div><div class="meta">Câu ${s.index+1}${s.start!=null?` · ${sec(s.start)}–${sec(s.end)}`:''}${sh?` · ${{sentence:'<span class="badge ok">khớp câu</span>',caption:'<span class="badge ok">khớp chú thích ảnh</span>',ai:'<span class="badge ok">AI xác nhận khớp câu</span>',ai_story:'<span class="badge ok">AI xác nhận đúng tin</span>',subject:'<span class="badge ok">đúng chủ thể</span>',secondary:'<span class="badge ok">chủ thể phụ</span>',story:'<span class="badge warn">liên quan rộng</span>',article:'<span class="badge">ảnh của bài</span>',illustration:'<span class="badge">ảnh minh hoạ</span>'}[sh.match]||'<span class="badge warn">chủ thể chính</span>'}`:''}${(s.shots||[]).length>1?` <span class="badge">${s.shots.length} ảnh</span>`:''}</div><div>${esc(s.text)}</div>${sh?`<div class="meta">${esc(sh.credit||'')}${sh.hits?.length?' · '+esc(sh.hits.join(', ')):''}${sh.note?'<br>'+esc(sh.note):''}</div>`:''}</div></div>`}).join('');
+ $('view').innerHTML=`<p class="meta"><a href="/scripts">← Kịch bản</a></p>
+ <div class="row"><div class="grow"><h1>${esc(p.title)}</h1><p class="sub">${esc(t.source_name||'')} · <a href="${esc(t.link)}" target="_blank" rel="noopener">bài gốc ↗</a> · <span class="badge ${draft?'':'ok'}">${{draft:'Bản nháp',pending:'Đã duyệt · Pending',done:'Thành phẩm'}[d.stage||'draft']}</span></p></div>
+ ${draft?'':`<button class="btn" onclick="toDraft(${id})">↶ Về bản nháp để sửa</button>`}<button class="btn danger" onclick="delProject(${id})">Xoá</button></div>
+ ${jobBox(d.job)}
+ <div class="grid2"><section class="card">
+  <label>Tiêu đề dự án</label><input class="in" id="fTitle" value="${esc(p.title)}" ${draft?'':'readonly'}>
+  <label>Tiêu đề trên màn hình (3 giây đầu)</label><input class="in" id="fHead" value="${esc(p.headline)}" ${draft?'':'readonly'}>
+  <label>Lời thoại · <span id="wc">${p.words} từ</span>${d.voice?` · giọng đọc ${sec(d.voice.duration)}${d.voice.fresh?'':' (cũ)'}`:''}</label>
+  <textarea class="in" id="fNarr" rows="11" ${draft?'':'readonly'}>${esc(p.narration)}</textarea>
+  <details><summary>Caption, hashtag, ghi chú kiểm chứng</summary><label>Caption</label><textarea class="in" id="fCap" rows="2" ${draft?'':'readonly'}>${esc(p.caption)}</textarea><label>Hashtag</label><input class="in" id="fTags" value="${esc(p.hashtags)}" ${draft?'':'readonly'}><label>Cần kiểm chứng</label><textarea class="in" id="fVer" rows="3" ${draft?'':'readonly'}>${esc(p.verification)}</textarea></details>
+  ${draft?`<div class="row" style="margin-top:14px"><button class="btn" onclick="saveDraft(${id})" ${active?'disabled':''}>Lưu</button><button class="btn" onclick="regen(${id},true)" ${active?'disabled':''}>↻ AI viết lại</button><button class="btn" onclick="sample(${id},this)">♫ Nghe thử câu đầu</button></div>`:''}
+  <audio id="aud" controls style="width:100%;margin-top:10px;display:${d.voice&&d.voice.url?'block':'none'}" src="${d.voice&&d.voice.url?esc(d.voice.url)+'?v='+Date.now():''}"></audio>
+  ${d.voice&&!d.voice.fresh?`<div class="notice">Audio cũ đã ẩn: ${esc(d.voice.stale_reason)}. Bấm “Tạo video xem thử” để tạo giọng mới.</div>`:''}
+  ${d.voice&&d.voice.fresh?`<div class="notice">Giọng hiện tại: <b>${esc(d.voice.provider_label)}</b>${d.voice.fallback_reason?' · '+esc(d.voice.fallback_reason):''}</div>`:''}
+  <h3 style="margin:22px 0 4px;font-size:15px">Hình theo từng câu <span class="meta">(tự động)</span></h3>
+  <div>${sentences}</div>
+ </section>
+ <section class="card">
+  <div class="row"><b>Xem thử video</b><span class="spacer"></span>${draft?`<button class="btn sm" onclick="preview(${id},true)" ${active?'disabled':''} title="Tìm lại ảnh từ đầu">↻ Tìm ảnh lại</button>`:''}</div>
+  ${d.preview_stale&&!fv?`<div class="notice">Video xem thử cũ (${esc(fmt(d.preview_stale.created_at))}) đã ẩn: ${esc(d.preview_stale.reason)}.</div>`:''}
+  ${(fv||pv)?`<video controls playsinline preload="metadata" src="${esc((fv||pv).url)}?v=${esc((fv||pv).created_at)}"></video><div class="row meta" style="margin-top:6px">${fv?'Bản cuối':'Bản xem thử'} · ${sec((fv||pv).duration)} · QA ${(fv||pv).passed?'<span class="badge ok">đạt</span>':'<span class="badge bad">chưa đạt</span>'}${(fv||pv).fresh?'':' · <span class="badge warn">cũ so với nội dung</span>'}<span class="spacer"></span><a class="btn sm" href="${esc((fv||pv).sheet)}" target="_blank">Ảnh kiểm tra</a><a class="btn sm" href="${esc((fv||pv).download)}" download>↓ MP4</a></div>`:`<div class="empty">Chưa có video xem thử</div>`}
+  ${draft?`<label style="margin-top:12px">AI kiểm tra ảnh cho lần này</label><select class="in" id="pvVer">${[['auto',`Tự động: ${d.verifiers.gemini&&!d.verifiers.gemini_exhausted?'Gemini → ':''}${d.verifiers.ollama?'AI trên máy ('+d.verifiers.ollama+')':'(chưa có AI trên máy)'}`,true],['gemini','Gemini'+(d.verifiers.gemini?(d.verifiers.gemini_exhausted?' — đang hết hạn mức':''):' — chưa nhập key'),!!d.verifiers.gemini],['ollama','AI trên máy'+(d.verifiers.ollama?' ('+d.verifiers.ollama+')':' — chưa cài: ollama pull qwen2.5vl:7b'),!!d.verifiers.ollama]].map(([k,t,ok])=>`<option value="${k}" ${ok?'':'disabled'} ${(d.verifier_default===k)?'selected':''}>${esc(t)}</option>`).join('')}</select>
+  <button class="btn pri" style="width:100%;margin-top:10px" onclick="preview(${id},false)" ${active?'disabled':''}>▶ Tạo video xem thử</button>`:''}
+  <div class="gates">${g.items.map(i=>`<div class="gate"><b style="color:${i.ok?'var(--ok)':'var(--bad)'}">${i.ok?'✓':'✕'}</b><span>${esc(i.message)}</span></div>`).join('')}${(g.warnings||[]).map(w=>`<div class="gate"><b style="color:var(--warn)">!</b><span>${esc(w)}</span></div>`).join('')}</div>
+  ${draft?`<button class="btn pri" style="width:100%" ${g.ok&&!active?'':'disabled'} onclick="approve(${id})">✓ Duyệt → Pending</button><p class="meta">Chỉ duyệt được khi mọi mục trên đạt. Sau khi duyệt, nội dung và hình bị khoá; bản cuối dùng đúng kế hoạch hình này.</p>`:`<a class="btn" style="width:100%;display:block;text-align:center" href="${d.stage==='done'?'/completed':'/pending'}">Mở ${d.stage==='done'?'Thành phẩm':'Pending'} →</a>`}
+ </section></div>`;
+ dirty=false;['fTitle','fHead','fNarr','fCap','fTags','fVer'].forEach(k=>$(k)?.addEventListener('input',()=>{dirty=true;const w=$('fNarr').value.trim().split(/\s+/).filter(Boolean).length;$('wc').textContent=w+' từ · chưa lưu'}));
+ if(active)poll(()=>{if(!dirty)editor(id)},2000)}
+function body(){return{title:$('fTitle').value,headline:$('fHead').value,narration:$('fNarr').value,caption:$('fCap').value,hashtags:$('fTags').value,verification:$('fVer').value}}
+async function saveDraft(id,quiet){if(!dirty)return true;try{await api(`/api/projects/${id}`,{method:'PUT',body:JSON.stringify(body())});dirty=false;if(!quiet){toast('Đã lưu.');editor(id)}return true}catch(e){toast(e.message,1);return false}}
+async function regen(id,confirmFirst){if(confirmFirst&&!confirm('AI viết lại sẽ thay thế lời thoại hiện tại. Tiếp tục?'))return;try{dirty=false;await post(`/api/projects/${id}/generate`,{});editor(id)}catch(e){toast(e.message,1)}}
+async function preview(id,refresh){if(!await saveDraft(id,true))return;const v=$('pvVer')?$('pvVer').value:'';try{await post(`/api/projects/${id}/preview?`+new URLSearchParams({refresh_media:refresh?'true':'false',verifier:v}));editor(id)}catch(e){toast(e.message,1)}}
+async function sample(id,b){if(!await saveDraft(id,true))return;b.disabled=true;b.textContent='Đang tạo…';try{const r=await post(`/api/projects/${id}/voice-sample`);const a=$('aud');a.style.display='block';a.src=r.url;a.play().catch(()=>{});if(r.fallback_reason)toast('Giọng dự phòng: '+r.provider)}catch(e){toast(e.message,1)}b.disabled=false;b.textContent='♫ Nghe thử câu đầu'}
+async function approve(id){if(!confirm('Duyệt kịch bản và đưa vào Pending? Nội dung và hình sẽ bị khoá.'))return;try{await post(`/api/projects/${id}/approve`);toast('Đã chuyển vào Pending.');go('/pending')}catch(e){toast(e.message,1)}}
+async function toDraft(id){if(!confirm('Chuyển về bản nháp? Tác vụ sản xuất đang chạy (nếu có) sẽ bị dừng.'))return;try{await post(`/api/projects/${id}/to-draft`);editor(id)}catch(e){toast(e.message,1)}}
+
+// ---------------- Pending
+async function pending(){const d=await api('/api/projects?stage=pending');pendingItems=d.items;const running=d.items.some(x=>x.job&&['queued','running','cancel_requested'].includes(x.job.status));
+ $('view').innerHTML=`<div class="row"><div><h1>Pending</h1><p class="sub">Chỉ kịch bản bạn đã duyệt. Kéo ⠿ để đổi thứ tự — clip chưa bắt đầu sẽ theo thứ tự mới.</p></div><span class="spacer"></span><button class="btn danger" onclick="cancelAll()" ${running?'':'disabled'}>■ Dừng tất cả</button><button class="btn pri" onclick="startBatch()" ${d.items.length&&!running?'':'disabled'}>▶ Sản xuất hàng loạt</button></div>
+ <div class="list">${d.items.length?d.items.map((x,i)=>{const j=x.job,act=j&&['queued','running','cancel_requested'].includes(j.status)&&j.kind==='final';return`<div class="item" draggable="true" data-id="${x.trend_id}"><span class="drag">⠿</span><b class="meta">${String(i+1).padStart(2,'0')}</b><div class="grow"><a class="t" href="/scripts/${x.trend_id}">${esc(x.title)}</a><div class="meta"><span class="badge">${esc(x.category)}</span> ${x.approved_valid?'':'<span class="badge bad">nội dung đổi sau khi duyệt</span>'} ${j&&j.kind==='final'?jobBadge(j):''} ${j&&j.status==='error'&&j.kind==='final'?esc(j.error||''):''}</div>${act?`<div class="row"><div class="progress grow"><div style="width:${Math.round((j.progress||0)*100)}%"></div></div><b class="pct" style="font-size:15px">${j.status==='queued'?'chờ':Math.round((j.progress||0)*100)+'%'}</b></div><div class="meta">${esc(j.step)}</div>`:''}</div>
+ <button class="btn sm" onclick="move(${x.trend_id},-1)" ${i?'':'disabled'}>↑</button><button class="btn sm" onclick="move(${x.trend_id},1)" ${i<d.items.length-1?'':'disabled'}>↓</button>${act?`<button class="btn sm danger" onclick="cancelJob(${j.id}).then(pending)">Huỷ</button>`:''}<button class="btn sm danger" onclick="removePending(${x.trend_id})">Xoá khỏi Pending</button></div>`}).join(''):'<div class="empty">Pending trống. Duyệt kịch bản ở mục Kịch bản để đưa vào đây.</div>'}</div>`;
+ document.querySelectorAll('.item[draggable]').forEach(el=>{el.ondragstart=()=>{dragId=+el.dataset.id};el.ondragover=e=>{e.preventDefault();el.classList.add('over')};el.ondragleave=()=>el.classList.remove('over');el.ondrop=e=>{e.preventDefault();el.classList.remove('over');reorder(dragId,+el.dataset.id)}});
+ poll(()=>{if(!dragId)pending()},running?2000:6000);counts()}
+async function saveOrder(ids){try{await api('/api/pending/order',{method:'PUT',body:JSON.stringify({ids})})}catch(e){toast(e.message,1)}pending()}
+function reorder(from,to){dragId=null;if(from===to)return;const ids=pendingItems.map(x=>x.trend_id);const a=ids.indexOf(from),b=ids.indexOf(to);ids.splice(b,0,ids.splice(a,1)[0]);saveOrder(ids)}
+function move(id,dir){const ids=pendingItems.map(x=>x.trend_id);const a=ids.indexOf(id),b=a+dir;[ids[a],ids[b]]=[ids[b],ids[a]];saveOrder(ids)}
+async function removePending(id){if(!confirm('Xoá khỏi Pending? Kịch bản trở về Bản nháp (không bị xoá); tác vụ đang chạy sẽ dừng.'))return;try{await api(`/api/pending/${id}`,{method:'DELETE'});pending()}catch(e){toast(e.message,1)}}
+async function startBatch(){try{const r=await post('/api/pending/start');toast(`Đã xếp ${r.queued} clip vào hàng sản xuất.`+(r.skipped.length?` Bỏ qua ${r.skipped.length}.`:''));pending()}catch(e){toast(e.message,1)}}
+async function cancelAll(){if(!confirm('Dừng toàn bộ sản xuất? Kịch bản vẫn ở Pending.'))return;await post('/api/pending/cancel-all');pending()}
+
+// ---------------- Completed
+async function completed(){const d=await api('/api/projects?stage=done');
+ $('view').innerHTML=`<h1>Thành phẩm</h1><p class="sub">MP4 đã qua kiểm tra chất lượng, kèm nguồn tin, ghi công ảnh và caption.</p><div class="list">${d.items.length?d.items.map(x=>{const f=x.final,l=x.legacy_video;return`<div class="item"><div class="grow"><a class="t" href="/scripts/${x.trend_id}">${esc(x.title)}</a><div class="meta"><span class="badge">${esc(x.category)}</span> ${f?`${f.width}×${f.height} · ${sec(f.duration)}`:l?'Video từ bản cũ (2.x) — chưa qua QA 3.0':''} · ${fmt(x.updated_at)}</div></div>
+ ${f?`<a class="btn sm" href="${esc(f.sheet)}" target="_blank">Ảnh kiểm tra</a><a class="btn sm" href="${esc(f.credits)}" download>Nguồn & caption</a><a class="btn sm pri" href="${esc(f.download)}" download>↓ MP4</a>`:l?`<a class="btn sm" href="${esc(l.url)}?download=1" download>↓ MP4 cũ</a>`:''}<button class="btn sm" onclick="toDraft2(${x.trend_id})">Làm lại</button></div>`}).join(''):'<div class="empty">Chưa có thành phẩm.</div>'}</div>`}
+async function toDraft2(id){if(!confirm('Đưa video này về bản nháp để làm lại?'))return;await post(`/api/projects/${id}/to-draft`);completed();counts()}
+
+// ---------------- Settings
+async function settings(){const [s,h]=await Promise.all([api('/api/settings'),api('/api/health')]);const v=s.settings;
+ $('view').innerHTML=`<h1>Cài đặt</h1><p class="sub">Thiết lập một lần, áp dụng cho mọi video.</p><div class="grid2"><section class="card">
+ <b>Nguồn ảnh</b>
+ ${[['article','Ảnh thật của tin: bài gốc + bài báo khác viết cùng sự kiện, ghi credit tên báo (khuyên dùng)'],['search','Ảnh tư liệu tìm theo tên trên Wikimedia/Openverse (có thể lệch tin)']].map(([k,t])=>`<label class="opt"><input type="radio" name="src" value="${k}" ${v.image_source===k?'checked':''}><span>${esc(t)}</span></label>`).join('')}
+ <p class="meta" style="margin-top:14px"><b>Giấy phép</b> — chỉ áp dụng khi dùng ảnh tư liệu:</p>
+ ${Object.entries(s.policies).map(([k,t])=>`<label class="opt"><input type="radio" name="pol" value="${k}" ${v.rights_policy===k?'checked':''}><span>${esc(t)}</span></label>`).join('')}
+ <label>Giọng đọc</label><select class="in" id="sVoice">${Object.entries(s.voices).map(([k,t])=>`<option value="${k}" ${v.voice_id===k?'selected':''}>${esc(t)}</option>`).join('')}</select>
+ <label>Dịch vụ giọng đọc</label><select class="in" id="sTts">${[['auto','Tự động: Edge → Azure → Gemini (cái nào có key)'],['edge','Chỉ Edge (miễn phí)'],['azure','Chỉ Azure Speech — Nam Minh (ổn định nhất)'],['gemini','Chỉ Gemini TTS (Google — giọng khác Nam Minh)'],['gtts','Google gTTS (giọng máy — không khuyên dùng)'],['macos','macOS “Linh” (chỉ Mac)']].map(([k,t])=>`<option value="${k}" ${v.tts_provider===k?'selected':''}>${t}</option>`).join('')}</select>
+ <label>AI kiểm tra ảnh (bắt buộc — ảnh chưa qua kiểm tra không bao giờ được dùng)</label><select class="in" id="sVer">${[['auto','Tự động: Gemini nếu có key, không thì AI trên máy (Ollama)'],['gemini','Gemini (nhanh, cần Gemini API key)'],['ollama','AI trên máy: ollama pull qwen2.5vl:7b']].map(([k,t])=>`<option value="${k}" ${v.image_verifier===k?'selected':''}>${t}</option>`).join('')}</select>
+ <label>SerpAPI key (tuỳ chọn — tìm ảnh bằng Google Images; để trống = Bing Images)</label><input class="in" id="sSerp" placeholder="key serpapi.com" value="${esc(v.serpapi_key)}">
+ <label>Key Azure Speech (tuỳ chọn — cùng giọng Nam Minh, miễn phí 500.000 ký tự/tháng)</label><input class="in" id="sAzKey" placeholder="dán Key 1 từ Azure Portal" value="${esc(v.azure_key)}">
+ <label>Vùng (Region) của key Azure</label><input class="in" id="sAzReg" value="${esc(v.azure_region)}">
+ <label>Gemini API key (tuỳ chọn — lấy ở aistudio.google.com)</label><input class="in" id="sGmKey" placeholder="dán API key Gemini" value="${esc(v.gemini_key)}">
+ <label>Giọng Gemini</label><select class="in" id="sGmVoice">${Object.entries(s.gemini_voices).map(([k,t])=>`<option value="${k}" ${v.gemini_voice===k?'selected':''}>${esc(t)}</option>`).join('')}</select>
+ <label class="opt"><input type="checkbox" id="sFb" ${v.allow_fallback_voice?'checked':''}><span>Cho phép giọng dự phòng kém tự nhiên (gTTS) khi Nam Minh lỗi — mặc định TẮT: thà báo lỗi còn hơn xuất video giọng máy</span></label>
+ <div class="row" style="margin-top:8px"><button class="btn" onclick="voiceTest(this)">♫ Nghe thử giọng</button><span class="meta" id="vtRes"></span></div><audio id="vtAud" controls style="width:100%;margin-top:8px;display:none"></audio>
+ <label>Độ dài mục tiêu (giây)</label><input class="in" id="sTarget" type="number" min="45" max="60" value="${v.target_seconds}">
+ <label>Chất lượng bản cuối</label><select class="in" id="sQ"><option ${v.final_quality==='1080p'?'selected':''}>1080p</option><option ${v.final_quality==='720p'?'selected':''}>720p</option></select>
+ <button class="btn pri" style="margin-top:14px" onclick="saveSettings()">Lưu cài đặt</button></section>
+ <section class="card"><b>Trạng thái máy</b><div class="gates">
+ ${[[h.ollama.online,h.ollama.online?'Ollama đang chạy':'Ollama chưa chạy — mở ứng dụng Ollama'],[h.ollama.model_installed,'Model viết: '+h.ollama.model+(h.ollama.model_installed?'':' — chạy: ollama pull '+h.ollama.model)],[!!h.ollama.vision_model,'AI nhìn ảnh (tuỳ chọn): '+(h.ollama.vision_model||'chưa cài — ollama pull qwen2.5vl:7b')],[h.ffmpeg,'FFmpeg'],[h.macos_voice,'Giọng dự phòng macOS “Linh”']].map(([ok,t])=>`<div class="gate"><b style="color:${ok?'var(--ok)':'var(--warn)'}">${ok?'✓':'!'}</b><span>${esc(t)}</span></div>`).join('')}</div>
+ <button class="btn" onclick="netCheck(this)">Kiểm tra kết nối nguồn tin / ảnh / giọng</button><div id="net" class="meta" style="margin-top:8px"></div>
+ <p class="meta">Phiên bản ${esc(h.version)} · CSDL ${esc(h.database)}${h.migration.backup?' · bản sao lưu trước nâng cấp: '+esc(h.migration.backup):''}</p></section></div>`}
+async function saveSettings(){try{await api('/api/settings',{method:'PUT',body:JSON.stringify({image_verifier:$('sVer').value,serpapi_key:$('sSerp').value.trim(),gemini_key:$('sGmKey').value.trim(),gemini_voice:$('sGmVoice').value,azure_key:$('sAzKey').value.trim(),azure_region:$('sAzReg').value.trim(),allow_fallback_voice:$('sFb').checked,image_source:document.querySelector('[name=src]:checked').value,rights_policy:document.querySelector('[name=pol]:checked').value,voice_id:$('sVoice').value,tts_provider:$('sTts').value,target_seconds:+$('sTarget').value,final_quality:$('sQ').value})});toast('Đã lưu cài đặt.')}catch(e){toast(e.message,1)}}
+async function voiceTest(b){await saveSettings();b.disabled=true;$('vtRes').textContent='Đang tạo giọng…';try{const r=await post('/api/voice-test');$('vtRes').textContent='✓ '+r.provider;const a=$('vtAud');a.style.display='block';a.src=r.url;a.play().catch(()=>{})}catch(e){$('vtRes').textContent='✕ '+e.message}b.disabled=false}
+async function netCheck(b){b.disabled=true;$('net').textContent='Đang kiểm tra…';const r=await post('/api/diagnostics/network');$('net').innerHTML=Object.entries(r).map(([k,v])=>`${v.ok?'✓':'✕'} ${esc(k)} (${esc(v.status)})`).join('<br>');b.disabled=false}
+route();setInterval(counts,15000);
+</script>
+</body>
+</html>

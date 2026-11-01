@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# TrendFlow launcher (macOS/Linux). Usage: trendflow [start|stop|status|update|backup|logs|restart]
+ROOT="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/.." && pwd)"
+PY="$ROOT/.venv/bin/python"; [[ -x "$PY" ]] || { echo "[TrendFlow] Chưa cài: python3 -m venv $ROOT/.venv && $ROOT/.venv/bin/pip install -r $ROOT/requirements.txt"; exit 1; }
+export TRENDFLOW_DATA_DIR="${TRENDFLOW_DATA_DIR:-$HOME/TrendFlowData}" PYTHONUTF8=1
+exec "$PY" "$ROOT/trendflow_cli.py" "$@"

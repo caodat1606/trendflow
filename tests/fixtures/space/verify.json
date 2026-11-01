@@ -1,0 +1,89 @@
+{
+ "hubble_deep_field.jpg": {
+  "relevant": true,
+  "score": 9,
+  "shows": "ảnh Hubble Deep Field, hàng nghìn thiên hà",
+  "sentences": [
+   1,
+   2
+  ],
+  "reason": "đúng chủ đề Hubble",
+  "subject_names": [
+   "Hubble",
+   "Hubble Deep Field"
+  ],
+  "kind": "place"
+ },
+ "astronaut.jpg": {
+  "relevant": true,
+  "score": 9,
+  "shows": "phi hành gia NASA mặc đồ bay màu cam",
+  "sentences": [
+   3,
+   4
+  ],
+  "reason": "đúng phi hành gia được nhắc",
+  "subject_names": [
+   "Eileen Collins",
+   "NASA"
+  ],
+  "kind": "person_photo"
+ },
+ "moon.jpg": {
+  "relevant": true,
+  "score": 8,
+  "shows": "bề mặt Mặt Trăng",
+  "sentences": [
+   5,
+   6
+  ],
+  "reason": "đúng Mặt Trăng",
+  "subject_names": [
+   "Mặt Trăng"
+  ],
+  "kind": "place"
+ },
+ "rocket.jpg": {
+  "relevant": true,
+  "score": 9,
+  "shows": "tên lửa Falcon 9 trên bệ phóng",
+  "sentences": [
+   7,
+   8
+  ],
+  "reason": "đúng Falcon 9/DSCOVR",
+  "subject_names": [
+   "Falcon 9",
+   "SpaceX",
+   "DSCOVR"
+  ],
+  "kind": "product"
+ },
+ "coffee.jpg": {
+  "relevant": false,
+  "score": 1,
+  "shows": "tách cà phê",
+  "sentences": [],
+  "reason": "không liên quan tin vũ trụ",
+  "subject_names": [],
+  "kind": "other"
+ },
+ "chelsea.jpg": {
+  "relevant": false,
+  "score": 0,
+  "shows": "con mèo",
+  "sentences": [],
+  "reason": "không liên quan",
+  "subject_names": [],
+  "kind": "other"
+ },
+ "camera.jpg": {
+  "relevant": false,
+  "score": 2,
+  "shows": "người quay phim",
+  "sentences": [],
+  "reason": "không liên quan",
+  "subject_names": [],
+  "kind": "other"
+ }
+}

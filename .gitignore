@@ -1,0 +1,21 @@
+# Personal data — never commit (it lives in the data folder, see tf_paths.py)
+.env
+*.db
+*.db-wal
+*.db-shm
+media_library/
+voice_outputs/
+video_outputs/
+backups/
+logs/
+run/
+TrendFlowData/
+# Python / tooling
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+# OS
+.DS_Store
+Thumbs.db

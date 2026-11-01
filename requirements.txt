@@ -1,0 +1,9 @@
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+feedparser>=6.0,<7
+requests>=2.32,<3
+python-dotenv>=1.0,<2
+edge-tts>=7.3.1,<8
+gTTS>=2.5,<3
+Pillow>=10.4,<14
+beautifulsoup4>=4.12,<5

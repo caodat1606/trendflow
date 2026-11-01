@@ -1,0 +1,20 @@
+[
+ {
+  "file": "chelsea.jpg",
+  "page_url": "https://cats.example.com/chelsea",
+  "title": "Chelsea the cat",
+  "outlet": "cats.example.com"
+ },
+ {
+  "file": "rocket.jpg",
+  "page_url": "https://space.example.com/dscovr",
+  "title": "Falcon 9 DSCOVR launch",
+  "outlet": "space.example.com"
+ },
+ {
+  "file": "camera.jpg",
+  "page_url": "https://photo.example.com/cam",
+  "title": "Cameraman",
+  "outlet": "photo.example.com"
+ }
+]
